@@ -1,0 +1,82 @@
+使用Unity 在局域网中创建链接,更简便的方法获得服务器IP。  
+
+想到的办法是通过服务器在局域网中广播本地IP地址：
+
+    private static Socket sock;
+    private static IPEndPoint iep1;
+    private static byte[] data;
+    private Thread t;
+
+    public int udpPort = 9050;
+
+    public void BroadcastIP()
+    {
+        sock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+
+        iep1 = new IPEndPoint(IPAddress.Broadcast, udpPort);
+
+        data = Encoding.ASCII.GetBytes("111");
+
+        sock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, 1);
+
+        t = new Thread(BroadcastMessage);
+        t.Start();
+    }
+
+    private void BroadcastMessage()
+    {
+        while (true)
+        {
+            sock.SendTo(data, iep1);
+
+            Thread.Sleep(2000);
+        }
+    }
+
+在链接端，我们可以通过以下方法获取：
+
+    byte[] data;
+    string Error_Message;
+
+    private Thread t;
+    public int udpPort = 9050;
+
+    void Awake()
+    {
+        GetSeverIP();
+    }
+
+    void GetSeverIP()
+    {
+        try
+        {
+            t = new Thread(Receive);
+            t.Start();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("错误信息：" + e.Message);
+        }
+    }
+
+    Socket sock;
+    void Receive()
+    {
+        sock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        IPEndPoint iep = new IPEndPoint(IPAddress.Any, udpPort);
+        sock.Bind(iep);
+        EndPoint ep = (EndPoint)iep;
+
+        byte[] data = new byte[1024];
+        int recv = sock.ReceiveFrom(data, ref ep);
+        string stringData = Encoding.ASCII.GetString(data, 0, recv);
+
+        Debug.Log(String.Format("received: {0} from: {1}", stringData, ep.ToString()));
+
+        sock.Close();
+    }
+
+这样的话，变方便了很多。
+————————————————
+版权声明：本文为CSDN博主「安折折」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/qq_26723085/article/details/81746191
